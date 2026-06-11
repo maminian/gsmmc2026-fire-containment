@@ -1,5 +1,6 @@
 import numpy as np
 import shapely as shp
+import shapely.ops as shp_ops
 import scipy.optimize as spo
 import shapely.plotting as shp_plotting
 
@@ -111,7 +112,7 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
   # generate a record of the region protected by each barrier
   prot = [] #the ith entry is the area protected by barrier b
   for b in B:
-    split1 = shp.ops.split(P, b)
+    split1 = shp_ops.split(P, b)
     #print(len(split1.geoms))
     prot.append(noContainsFirestart(split1))
 
@@ -144,7 +145,7 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
       elif face2.contains(face1.buffer(-0.01)):
         Gp[c][r] = 1
       
-  Af = shp.ops.split(P, shp.MultiLineString(B))
+  Af = shp_ops.split(P, shp.MultiLineString(B))
   protby = []
 
   # for each face- find which barriers protect it, and record it
@@ -163,7 +164,7 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
   protarea[protarea_argsort[1]]
 
   # RUN GREEDY HEURISTIC
-
+  '''
   greedybans = np.array([0 for i in np.arange(len(B))])
   greedyqueue = []
   greedytime = 0
@@ -179,8 +180,12 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
   #shp_plotting.plot_line(shp.MultiLineString(greedyqueue), color = "green")
   #shp_plotting.plot_points(FIRESTART, color = "red")
 
-  greedyburned = containsFirestart(shp.ops.split(P, shp.MultiLineString(greedyqueue)))
+  greedyburned = containsFirestart(shp_ops.split(P, shp.MultiLineString(greedyqueue)))
   greedysaved = P.area - greedyburned.area
+  '''
+  # temporary patch while fixing
+  greedyburned = P
+  greedysaved = 0
   #print("Area saved by Greedy Heuristic = " + str(greedysaved))
 
 
@@ -191,7 +196,7 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
   for i in np.arange(len(B)):
     okBarriers = [B[j] for j in np.arange(len(B)) if Gp[j][i] == 0 and i != j]
     okBarriers.append(B[i])
-    minBurned = containsFirestart(shp.ops.split(P, shp.MultiLineString(okBarriers)))
+    minBurned = containsFirestart(shp_ops.split(P, shp.MultiLineString(okBarriers)))
     #shp_plotting.plot_polygon(P)
     #shp_plotting.plot_line(shp.MultiLineString(okBarriers))
     if not minBurned or minBurned.area < greedyburned.area: #slightly scuffed alg: sometimes minBurned is false, which is probably a result of cutting the firestart region so finely that numerical errors or buffering cause it to not be detected. it's assumed that when this happens the burned area is very small.
@@ -351,3 +356,38 @@ res, out = zambon(P, B, delta, FIRESTART = FIRESTART, CONSPEED = 20)
 shp_plotting.plot_polygon(P)
 shp_plotting.plot_line(shp.MultiLineString(out), color = "green")
 '''
+
+# Build Time Limits
+# this will be generated via simulation in the correct run. For now we're going to let the fire expand at a constant rate and clip through walls.
+
+
+
+# BASIC VARIABLES
+
+TOLERANCE = 10**(-3)
+CONSPEED = 20
+FIRESTART = shp.Point(-4,0)
+
+V = [
+    shp.Point(1,2),
+    shp.Point(3,7),
+    shp.Point(5,3),
+    shp.Point(6,0),
+    shp.Point(4,-4),
+    shp.Point(0,-2),
+    shp.Point(-2,-5),
+    shp.Point(-5,-1),
+    shp.Point(-3,4),
+    shp.Point(0, 2)
+]
+
+
+P, B = generateGeometricData(V)
+FIRESPEED = 2
+delta = [shp.distance(b, FIRESTART)/FIRESPEED for b in B]
+
+res, out = zambon(P, B, delta, FIRESTART = FIRESTART, CONSPEED = 20)
+
+shp_plotting.plot_polygon(P)
+shp_plotting.plot_line(shp.MultiLineString(out), color = "green")
+
