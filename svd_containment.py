@@ -103,6 +103,12 @@ ax.scatter(r[:,0], r[:,1], c=plt.cm.tab20(range(len(ts))), marker='s', s=100, la
 ax.plot(r[:,0], r[:,1], c='k', label='containment')
 ax.legend(loc='upper left')
 
+## pretty doodad illustrating time
+ax.scatter(np.linspace(1,3,20), np.repeat(3,20), c=np.reshape(np.arange(20), (1,20)), cmap=plt.cm.tab20, marker='s')
+ax.annotate("",xy=(3, 2.85),xytext=(1, 2.85),arrowprops=dict(arrowstyle="->", linewidth=2))
+
+ax.text(2, 2.8,r"$t$",ha="center",va="top")
+
 ax.set(aspect='equal', xlabel=r'$x$', ylabel=r'$y$')
 fig.show()
 fig.savefig('svd_containment_alg.png', bbox_inches='tight')
