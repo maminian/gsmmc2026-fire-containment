@@ -59,13 +59,11 @@ def generateGeometricData(points):
 
 def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 10**(-3)):
   '''
-  INPUT:
-  P, B generated from generateGeometricData
-  delta = the first time each barrier is touched by the fire. 
-    This is ideally retrieved from simulation.
-  FIRESTART = starting point of data, as a shp.Point() object
-  CONSPEED = how fast barriers can be built
-  TOLERANCE = largely irrelevant; some small tolerance for geometrical distance, to handle tiny numerical errors. Can ignore
+  #INPUT:
+  #P, B generated from generateGeometricData
+  # FIRESTART = starting point of data, as a shp.Point() object
+  #CONSPEED = how fast barriers can be built
+  # TOLERANCE = largely irrelevant; some small tolerance for geometrical distance, to handle tiny numerical errors. Can ignore
 
 
   OUTPUT:
@@ -116,7 +114,7 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
     #print(len(split1.geoms))
     prot.append(noContainsFirestart(split1))
 
-  # generate a record of the areas 
+  # generate a record of the areas
   protarea = [f.area for f in prot]
 
 
@@ -124,7 +122,7 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
     for c in np.arange(r + 1, len(B)):
       l1 = B[r]
       l2 = B[c]
-      # determine whether they intersect. 
+      # determine whether they intersect.
       # there is a tiny buffer to avoid cases where they intersect at a polygon vertex
       # and a double check just in case.
       if l1.intersects(l2):
@@ -144,7 +142,7 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
         Gp[r][c] = 1
       elif face2.contains(face1.buffer(-0.01)):
         Gp[c][r] = 1
-      
+
   Af = shp_ops.split(P, shp.MultiLineString(B))
   protby = []
 
@@ -158,13 +156,13 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
         arr.append(j)
     protby.append(arr)
 
-      
+
   # get indices for sorting the areas in descending order
   protarea_argsort = np.argsort(protarea)[::-1]
   protarea[protarea_argsort[1]]
 
   # RUN GREEDY HEURISTIC
-  '''
+
   greedybans = np.array([0 for i in np.arange(len(B))])
   greedyqueue = []
   greedytime = 0
@@ -182,10 +180,8 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
 
   greedyburned = containsFirestart(shp_ops.split(P, shp.MultiLineString(greedyqueue)))
   greedysaved = P.area - greedyburned.area
-  '''
-  # temporary patch while fixing
-  greedyburned = P
-  greedysaved = 0
+  
+
   #print("Area saved by Greedy Heuristic = " + str(greedysaved))
 
 
@@ -209,9 +205,12 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
   p = trim(p, validB)
   ftime = trim(ftime, validB)
   delta = trim(delta, validB)
-  #Gp = Gp[validB, validB]
-  #Gc = Gc[validB, validB]
-  #Gi = Gi[validB, validB]
+  Gp = Gp[validB, :]
+  Gp = Gp[:,validB]
+  Gc = Gc[validB, :]
+  Gc = Gc[:,validB]
+  Gi = Gi[validB, :]
+  Gi = Gi[:,validB]
   protarea = trim(protarea, validB)
 
 
@@ -287,9 +286,9 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
   cvec = negprotarea + [0 for i in range(len(B))]
 
 
-  res = spo.milp(c = cvec, 
+  res = spo.milp(c = cvec,
           integrality = integrality_constraint,
-          bounds = var_bounds, 
+          bounds = var_bounds,
           constraints = (con1, con2, con3)
           )
   # output whether it was successful
@@ -299,7 +298,7 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
   #print(y)
 
   sol = [B[i] for i in range(len(y)) if y[i] == 1 ]
-  
+
 
 
 
@@ -311,7 +310,7 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
   output = []
   for i in range(NB):
     output.append(B[sortind[i]])
-  
+
   return (res, output)
 
 
@@ -325,38 +324,7 @@ def zambon(P, B, delta, FIRESTART = shp.Point(0, 0), CONSPEED = 1, TOLERANCE = 1
   #print(Gp)
 
 
-
-''' EXAMPLE USAGE
-
-TOLERANCE = 10**(-3)
-CONSPEED = 20
-FIRESTART = shp.Point(-4,0)
-
-V = [
-    shp.Point(1,2),
-    shp.Point(3,7),
-    shp.Point(5,3),
-    shp.Point(6,0),
-    shp.Point(4,-4),
-    shp.Point(0,-2),
-    shp.Point(-2,-5),
-    shp.Point(-5,-1),
-    shp.Point(-3,4),
-    shp.Point(0, 2)
-]
-
-
-P, B = generateGeometricData(V)
-# SIMULATE simple constant rate spreading fire
-FIRESPEED = 2
-delta = [shp.distance(b, FIRESTART)/FIRESPEED for b in B]
-
-res, out = zambon(P, B, delta, FIRESTART = FIRESTART, CONSPEED = 20)
-
-shp_plotting.plot_polygon(P)
-shp_plotting.plot_line(shp.MultiLineString(out), color = "green")
-'''
-
+  
 # Build Time Limits
 # this will be generated via simulation in the correct run. For now we're going to let the fire expand at a constant rate and clip through walls.
 
